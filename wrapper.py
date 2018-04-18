@@ -132,12 +132,12 @@ def history():
         status = "error"
 
     for w in data:
-        c.append(w["close"])
-        o.append(w["open"])
-        h.append(w["high"])
-        l.append(w["low"])
-        v.append(w["volume"])
         t.append(w["time"])
+        c.append(w["close"])
+        o.append(w["open"] if w["open"] is not None else w["close"])
+        h.append(w["high"] if w["high"] is not None else w["close"])
+        l.append(w["low"] if w["low"] is not None else w["close"])
+        v.append(w["volume"])
 
     results["s"] = status
     results["t"] = t
