@@ -36,15 +36,15 @@ def config():
 def symbols():
     ticker = request.args.get('symbol')
 
-    data = get_data('SELECT * FROM symbols WHERE symbol ILIKE %s OR ticker ILIKE %s',
+    query = get_data('SELECT * FROM symbols WHERE symbol ILIKE %s OR ticker ILIKE %s',
                     [ticker, ticker])
 
-    if len(data) == 0:
+    if len(query.data) == 0:
         return jsonify({
             "errmsg": "Symbol not found"
         })
 
-    data = data[0]
+    data = query.data[0]
 
     results = {}
 
@@ -90,10 +90,10 @@ def search():
 
     final = []
 
-    data = get_data('SELECT * FROM symbols WHERE symbol ILIKE %s OR ticker ILIKE %s LIMIT %s',
+    query = get_data('SELECT * FROM symbols WHERE symbol ILIKE %s OR ticker ILIKE %s LIMIT %s',
                     [query + '%', query + '%', limit])
 
-    for w in data:
+    for w in query.data:
         results = {}
 
         results["symbol"] = w["symbol"]
@@ -123,15 +123,12 @@ def history():
     l = []
     v = []
 
-    data = get_data('SELECT * FROM history WHERE ticker ILIKE %s OR symbol ILIKE %s and time > %s and time < %s',
+    query = get_data('SELECT * FROM history WHERE (ticker ILIKE %s OR symbol ILIKE %s) AND time BETWEEN %s AND %s ORDER BY time',
                     [symbol, symbol, left, right])
 
-    if len(data) > 0:
-        status = "ok"
-    else:
-        status = "error"
+    status = query.status
 
-    for w in data:
+    for w in query.data:
         t.append(w["time"])
         c.append(w["close"])
         o.append(w["open"] if w["open"] is not None else w["close"])
@@ -177,8 +174,23 @@ def get_data(query, data):
                            password=postgres_config['postgres_password'])
     cur = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    cur.execute(query, data)
+    result = QueryData()
+    try:
+        cur.execute(query, data)
+        array = cur.fetchall()
+        result.data = array
+        result.status = "ok"
+    except Exception:
+        result.status = "error"
+    finally:
+        con.close()
 
-    result = cur.fetchall()
-    con.close()
     return result
+
+
+class QueryData:
+    def __init__(self):
+        pass
+
+    data = {}
+    status = ""
